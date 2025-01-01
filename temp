@@ -1,0 +1,128 @@
+// lib/features/letter_tracing/domain/entities/letter.dart
+class Letter {
+  final String imagePath;
+  final String name;
+  final String language;
+
+  Letter({required this.imagePath, required this.name, required this.language});
+}
+
+// lib/features/letter_tracing/domain/repositories/letter_repository.dart
+abstract class LetterRepository {
+  List<Letter> getLettersByLanguage(String language);
+  List<String> getAvailableLanguages();
+}
+
+// lib/features/letter_tracing/data/repositories/letter_repository_impl.dart
+import '../../domain/repositories/letter_repository.dart';
+import '../../domain/entities/letter.dart';
+
+class LetterRepositoryImpl implements LetterRepository {
+  final Map<String, List<Letter>> _lettersByLanguage = {
+    'English': [
+      Letter(imagePath: 'lib/assets/english/A.png', name: 'A', language: 'English'),
+      Letter(imagePath: 'lib/assets/english/B.png', name: 'B', language: 'English'),
+    ],
+    'Arabic': [
+      Letter(imagePath: 'lib/assets/arabic/alif.png', name: 'أ', language: 'Arabic'),
+      Letter(imagePath: 'lib/assets/arabic/ba.png', name: 'ب', language: 'Arabic'),
+    ],
+  };
+
+  @override
+  List<Letter> getLettersByLanguage(String language) => _lettersByLanguage[language] ?? [];
+
+  @override
+  List<String> getAvailableLanguages() => _lettersByLanguage.keys.toList();
+}
+
+// lib/features/letter_tracing/presentation/widgets/drawing_canvas.dart
+import 'package:flutter/material.dart';
+
+class DrawingCanvas extends CustomPainter {
+  final List<Offset> points;
+
+  DrawingCanvas({required this.points});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.blue
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+
+    for (int i = 0; i < points.length - 1; i++) {
+      canvas.drawLine(points[i], points[i + 1], paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// lib/features/letter_tracing/presentation/pages/letter_tracing_screen.dart
+import 'package:flutter/material.dart';
+import '../../domain/entities/letter.dart';
+import '../../data/repositories/letter_repository_impl.dart';
+import '../widgets/drawing_canvas.dart';
+
+class LetterTracingScreen extends StatefulWidget {
+  const LetterTracingScreen({Key? key}) : super(key: key);
+
+  @override
+  State<LetterTracingScreen> createState() => _LetterTracingScreenState();
+}
+
+class _LetterTracingScreenState extends State<LetterTracingScreen> {
+  final LetterRepository _repository = LetterRepositoryImpl();
+  final List<Offset> _points = [];
+  bool isCompleted = false;
+  int currentLetterIndex = 0;
+  late String currentLanguage;
+  late List<Letter> currentLetters;
+
+  @override
+  void initState() {
+    super.initState();
+    currentLanguage = _repository.getAvailableLanguages().first;
+    currentLetters = _repository.getLettersByLanguage(currentLanguage);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Learn to Write!'),
+        actions: [_buildLanguageDropdown()],
+      ),
+      body: Column(
+        children: [
+          _buildDrawingArea(),
+          _buildControlButtons(),
+          if (isCompleted) _buildCompletionMessage(),
+        ],
+      ),
+    );
+  }
+
+  // [Rest of the widget implementation]
+}
+
+// lib/main.dart
+import 'package:flutter/material.dart';
+import 'features/letter_tracing/presentation/pages/letter_tracing_screen.dart';
+
+void main() => runApp(const MyApp());
+
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Letter Tracing',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const LetterTracingScreen(),
+    );
+  }
+}
