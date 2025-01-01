@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class DrawingCanvas extends CustomPainter {
-  final List<Offset> points;
+final List<List<Offset>> strokes;
 
-  DrawingCanvas({required this.points});
+DrawingCanvas({required this.strokes});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -12,8 +12,10 @@ class DrawingCanvas extends CustomPainter {
       ..strokeWidth = 5
       ..strokeCap = StrokeCap.round;
 
-    for (int i = 0; i < points.length - 1; i++) {
-      canvas.drawLine(points[i], points[i + 1], paint);
+    for (final stroke in strokes) {
+    for (int i = 0; i < stroke.length - 1; i++) {
+        canvas.drawLine(stroke[i], stroke[i + 1], paint);
+    }
     }
   }
 

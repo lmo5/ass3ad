@@ -11,15 +11,14 @@ class LetterTracingScreen extends StatefulWidget {
   State<LetterTracingScreen> createState() => _LetterTracingScreenState();
 }
 
-// Continuing from the previous LetterTracingScreen class...
-
 class _LetterTracingScreenState extends State<LetterTracingScreen> {
   final LetterRepository _repository = LetterRepositoryImpl();
-  final List<Offset> _points = [];
+  final List<List<Offset>> _strokes = []; // List of strokes, each stroke is a list of points
   bool isCompleted = false;
   int currentLetterIndex = 0;
   late String currentLanguage;
   late List<Letter> currentLetters;
+  final GlobalKey _drawingAreaKey = GlobalKey(); // Key for the drawing area
 
   @override
   void initState() {
@@ -48,7 +47,7 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
               currentLanguage = newValue;
               currentLetters = _repository.getLettersByLanguage(newValue);
               currentLetterIndex = 0;
-              _points.clear();
+              _strokes.clear(); // Clear all strokes when language changes
               isCompleted = false;
             });
           }
@@ -60,6 +59,7 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
   Widget _buildDrawingArea() {
     return Expanded(
       child: Container(
+        key: _drawingAreaKey, // Assign the key to the drawing area
         margin: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.blue, width: 2),
@@ -78,11 +78,19 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
             ),
             // Drawing area
             GestureDetector(
+              onPanStart: (details) {
+                setState(() {
+                  // Start a new stroke
+                  _strokes.add([]);
+                });
+              },
               onPanUpdate: (details) {
                 setState(() {
-                  RenderBox renderBox = context.findRenderObject() as RenderBox;
+                  // Use the correct RenderBox for the drawing area
+                  RenderBox renderBox = _drawingAreaKey.currentContext!.findRenderObject() as RenderBox;
                   Offset localPosition = renderBox.globalToLocal(details.globalPosition);
-                  _points.add(localPosition);
+                  // Add the point to the current stroke
+                  _strokes.last.add(localPosition);
                 });
               },
               onPanEnd: (details) {
@@ -92,7 +100,7 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
               },
               child: CustomPaint(
                 size: Size.infinite,
-                painter: DrawingCanvas(points: _points),
+                painter: DrawingCanvas(strokes: _strokes), // Pass all strokes to the canvas
               ),
             ),
           ],
@@ -164,29 +172,30 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
 
   void _clearDrawing() {
     setState(() {
-      _points.clear();
+      _strokes.clear(); // Clear all strokes
       isCompleted = false;
     });
   }
 
   void _nextLetter() {
     setState(() {
-      _points.clear();
+      _strokes.clear(); // Clear all strokes
       currentLetterIndex = (currentLetterIndex + 1) % currentLetters.length;
       isCompleted = false;
     });
   }
 
   bool _checkCompletion() {
-    if (_points.length < 50) return false;
+    if (_strokes.isEmpty || _strokes.last.length < 50) return false;
 
-    // Calculate the covered area
+    // Calculate the covered area for the last stroke
+    List<Offset> lastStroke = _strokes.last;
     double minX = double.infinity;
     double maxX = double.negativeInfinity;
     double minY = double.infinity;
     double maxY = double.negativeInfinity;
 
-    for (Offset point in _points) {
+    for (Offset point in lastStroke) {
       minX = point.dx < minX ? point.dx : minX;
       maxX = point.dx > maxX ? point.dx : maxX;
       minY = point.dy < minY ? point.dy : minY;
