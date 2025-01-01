@@ -67,13 +67,14 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
         ),
         child: Stack(
           children: [
-            // Letter template image
+            // Letter template (dynamically generated)
             Center(
-              child: Image.asset(
-                currentLetters[currentLetterIndex].imagePath,
-                color: Colors.grey.withOpacity(0.5),
-                fit: BoxFit.contain,
-                height: 300,
+              child: CustomPaint(
+                size: const Size(300, 300),
+                painter: LetterPainter(
+                  letter: currentLetters[currentLetterIndex].unicode,
+                  color: Colors.grey.withOpacity(0.5),
+                ),
               ),
             ),
             // Drawing area
@@ -158,7 +159,7 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Great job writing "${currentLetters[currentLetterIndex].name}"!',
+            'Great job writing "${currentLetters[currentLetterIndex].unicode}"!',
             style: const TextStyle(
               fontSize: 24,
               color: Colors.green,
@@ -228,4 +229,39 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
       ),
     );
   }
+}
+
+/// CustomPainter to draw the letter based on its Unicode representation
+class LetterPainter extends CustomPainter {
+  final String letter;
+  final Color color;
+
+  LetterPainter({required this.letter, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final textStyle = TextStyle(
+      fontSize: 200, // Adjust the size of the letter
+      color: color,
+      fontFamily: 'Arial', // Use a font that supports the Unicode character
+    );
+
+    final textSpan = TextSpan(text: letter, style: textStyle);
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+    );
+
+    textPainter.layout();
+    final offset = Offset(
+      (size.width - textPainter.width) / 2,
+      (size.height - textPainter.height) / 2,
+    );
+
+    textPainter.paint(canvas, offset);
+  }
+
+  @override
+  bool shouldRepaint(LetterPainter oldDelegate) =>
+      oldDelegate.letter != letter || oldDelegate.color != color;
 }

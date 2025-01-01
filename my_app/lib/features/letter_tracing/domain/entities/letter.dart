@@ -1,7 +1,6 @@
 class Letter {
-  final String imagePath;
   final String name;
-  final String language;
+  final String unicode; // Unicode representation of the letter
 
-  Letter({required this.imagePath, required this.name, required this.language});
+  Letter({required this.name, required this.unicode});
 }
