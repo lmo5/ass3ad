@@ -19,6 +19,7 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
   late String currentLanguage;
   late List<Letter> currentLetters;
   final GlobalKey _drawingAreaKey = GlobalKey(); // Key for the drawing area
+  bool _showNotebookLines = true; // Toggle for notebook lines visibility
 
   @override
   void initState() {
@@ -67,6 +68,14 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
         ),
         child: Stack(
           children: [
+            // Notebook page lines (conditionally shown)
+            if (_showNotebookLines)
+              Image.asset(
+                'lib/assets/notebook_lines.jpg', // Path to your notebook lines PNG
+                fit: BoxFit.cover, // Stretch the image to cover the drawing area
+                width: double.infinity,
+                height: double.infinity,
+              ),
             // Letter template (dynamically generated)
             Center(
               child: CustomPaint(
@@ -126,6 +135,18 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
             icon: Icons.arrow_forward,
             label: 'Next Letter',
           ),
+          // Toggle notebook lines button
+          IconButton(
+            icon: Icon(
+              _showNotebookLines ? Icons.grid_off : Icons.grid_on,
+              color: Colors.blue,
+            ),
+            onPressed: () {
+              setState(() {
+                _showNotebookLines = !_showNotebookLines; // Toggle visibility
+              });
+            },
+          ),
         ],
       ),
     );
@@ -159,7 +180,7 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Great job writing "${currentLetters[currentLetterIndex].unicode}"!',
+            'Great job writing "${currentLetters[currentLetterIndex].name}"!',
             style: const TextStyle(
               fontSize: 24,
               color: Colors.green,
@@ -189,28 +210,73 @@ class _LetterTracingScreenState extends State<LetterTracingScreen> {
   bool _checkCompletion() {
     if (_strokes.isEmpty || _strokes.last.length < 50) return false;
 
-    // Calculate the covered area for the last stroke
-    List<Offset> lastStroke = _strokes.last;
-    double minX = double.infinity;
-    double maxX = double.negativeInfinity;
-    double minY = double.infinity;
-    double maxY = double.negativeInfinity;
+    // Calculate the accuracy of the user's drawing
+    double accuracy = _calculateAccuracy();
+    return accuracy > 0.7; // Consider it correct if accuracy is above 70%
+  }
 
-    for (Offset point in lastStroke) {
-      minX = point.dx < minX ? point.dx : minX;
-      maxX = point.dx > maxX ? point.dx : maxX;
-      minY = point.dy < minY ? point.dy : minY;
-      maxY = point.dy > maxY ? point.dy : maxY;
+  double _calculateAccuracy() {
+    // Get the expected path for the current letter
+    List<Offset> expectedPath = _getExpectedPath(currentLetters[currentLetterIndex].unicode);
+
+    // Flatten all user strokes into a single list of points
+    List<Offset> userPath = _strokes.expand((stroke) => stroke).toList();
+
+    // Compare the user's path with the expected path
+    double totalDistance = 0;
+    for (Offset userPoint in userPath) {
+      double minDistance = double.infinity;
+      for (Offset expectedPoint in expectedPath) {
+        double distance = (userPoint - expectedPoint).distance;
+        if (distance < minDistance) {
+          minDistance = distance;
+        }
+      }
+      totalDistance += minDistance;
     }
 
-    // Check if the drawing covers a significant area
-    double areaWidth = maxX - minX;
-    double areaHeight = maxY - minY;
-    double containerWidth = context.size?.width ?? 0;
-    double containerHeight = context.size?.height ?? 0;
+    // Normalize the accuracy score
+    double maxDistance = _getMaxDistance(expectedPath);
+    double accuracy = 1.0 - (totalDistance / (userPath.length * maxDistance));
+    return accuracy.clamp(0.0, 1.0); // Ensure accuracy is between 0 and 1
+  }
 
-    return areaWidth > containerWidth * 0.3 &&
-        areaHeight > containerHeight * 0.3;
+  List<Offset> _getExpectedPath(String unicode) {
+    // Define the expected path for each letter
+    // This is a simplified example; you can use more complex logic or data
+    switch (unicode) {
+      case 'A':
+        return [
+          Offset(50, 200),
+          Offset(150, 50),
+          Offset(250, 200),
+          Offset(200, 150),
+          Offset(100, 150),
+        ];
+      case 'B':
+        return [
+          Offset(50, 50),
+          Offset(50, 200),
+          Offset(150, 200),
+          Offset(200, 150),
+          Offset(150, 100),
+          Offset(50, 100),
+        ];
+      default:
+        return [];
+    }
+  }
+
+  double _getMaxDistance(List<Offset> path) {
+    // Calculate the maximum possible distance between points in the path
+    double maxDistance = 0;
+    for (int i = 0; i < path.length - 1; i++) {
+      double distance = (path[i] - path[i + 1]).distance;
+      if (distance > maxDistance) {
+        maxDistance = distance;
+      }
+    }
+    return maxDistance;
   }
 
   @override
